@@ -12,12 +12,50 @@ datasource db {
   provider = "postgresql"
 }
 
-model Monitor{
-  id String @id @default(cuid())
-  url String
-  Status String
-  res Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+enum MonitorStatus {
+  UP
+  DOWN
+  PENDING
 }
 
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  monitors  Monitor[]
+}
+
+model Monitor {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  
+  url         String
+  frequency   Int           @default(60) // in seconds
+  timeout     Int           @default(10000) // in milliseconds
+  isActive    Boolean       @default(true)
+  
+  status      MonitorStatus @default(PENDING)
+  lastChecked DateTime?
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  logs        MonitorLog[]
+
+  // Indexing for performance
+  @@index([userId])
+  @@index([isActive])
+}
+
+model MonitorLog {
+  id           String   @id @default(cuid())
+  monitorId    String
+  monitor      Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  
+  responseTime Int?
+  statusCode   Int?     
+  message      String?
+  createdAt    DateTime @default(now())
+}
