@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,39 +7,28 @@ datasource db {
   provider = "postgresql"
 }
 
-
-enum MonitorStatus {
-  UP
-  DOWN
-  PENDING
-}
-
 model User {
-  id        String    @id @default(cuid())
-  name      String
-  email     String    @unique
-  password  String
-  monitors  Monitor[]
+  id       String    @id @default(cuid())
+  name     String
+  email    String    @unique
+  password String
+  monitors Monitor[]
 }
 
 model Monitor {
   id          String        @id @default(cuid())
   userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  
   url         String
-  frequency   Int           @default(60) // in seconds
-  timeout     Int           @default(10000) // in milliseconds
+  frequency   Int           @default(60)
+  timeout     Int           @default(10000)
   isActive    Boolean       @default(true)
-  
   status      MonitorStatus @default(PENDING)
   lastChecked DateTime?
-  
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
   logs        MonitorLog[]
 
-  // Indexing for performance
   @@index([userId])
   @@index([isActive])
 }
@@ -52,10 +36,15 @@ model Monitor {
 model MonitorLog {
   id           String   @id @default(cuid())
   monitorId    String
-  monitor      Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
-  
   responseTime Int?
-  statusCode   Int?     
+  statusCode   Int?
   message      String?
   createdAt    DateTime @default(now())
+  monitor      Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+}
+
+enum MonitorStatus {
+  UP
+  DOWN
+  PENDING
 }

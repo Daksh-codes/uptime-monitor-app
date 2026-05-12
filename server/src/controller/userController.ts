@@ -4,6 +4,27 @@ import jwt from "jsonwebtoken";
 
 import * as bcrypt from "bcrypt";
 
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+  };
+}
+
+// GET /profile
+const getCurrentUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { id: true, name: true, email: true },
+    });
+
+    return res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// GET /user/:id
 const getUser = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -29,9 +50,14 @@ const getUser = async (req: Request, res: Response) => {
     }
 
     return res.json(user);
-  } catch (error) {}
+  } catch (error) {
+    return res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
 };
 
+// Post /
 const addUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
@@ -72,12 +98,14 @@ const addUser = async (req: Request, res: Response) => {
       user,
     });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       message: "Something went wrong",
     });
   }
 };
 
+// DELETE /user/:id
 const deleteUser = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -96,7 +124,6 @@ const deleteUser = async (req: Request, res: Response) => {
       message: `User with id ${id} has been deleted`,
     });
   } catch (error: any) {
-    
     // prisma generates this error code P2025 when record not found
     if (error.code === "P2025") {
       return res.status(404).json({ message: "User not found" });
@@ -106,17 +133,19 @@ const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
+// POST /login
 const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
     const user = await prisma.user.findUnique({ where: { email } });
 
+    // validate user
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Invalid credentials" });
     }
 
-    const passwordMatched = await bcrypt.compare(user.password, password);
+    const passwordMatched = await bcrypt.compare(password, user.password);
 
     if (!passwordMatched) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -125,9 +154,8 @@ const loginUser = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { id: user.id }, // payload
       process.env.JWT_SECRET as string,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
-
 
     return res.json({
       message: "Login successful",
@@ -138,9 +166,9 @@ const loginUser = async (req: Request, res: Response) => {
         email: user.email,
       },
     });
-
-
   } catch (error) {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+
+export { getUser, addUser, deleteUser, loginUser, getCurrentUser };
